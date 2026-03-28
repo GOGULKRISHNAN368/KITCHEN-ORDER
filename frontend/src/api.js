@@ -4,11 +4,11 @@ import axios from 'axios';
 const API_URL = '/api/orders';
 
 export const fetchOrders = () => {
-  console.log('📡 Fetching orders...');
-  return axios.get(API_URL);
+  console.log('📡 Fetching active orders...');
+  return axios.get(`${API_URL}/active`);
 };
 
 export const completeOrder = (id) => {
-  console.log(`✅ Completing order: ${id} at ${API_URL}/${id}`);
-  return axios.delete(`${API_URL}/${id}`);
+  console.log(`✅ Completing order: ${id} at ${API_URL}/complete/${id}`);
+  return axios.put(`${API_URL}/complete/${id}`);
 };

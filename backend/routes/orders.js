@@ -3,37 +3,39 @@ const router = express.Router();
 const mongoose = require('mongoose');
 const Order = require('../models/Order');
 
-// @route   GET /api/orders
-// @desc    Get all pending orders
-router.get('/', async (req, res) => {
+// @route   GET /api/orders/active
+// @desc    Get all active orders (Pending or Waiting)
+router.get('/active', async (req, res) => {
   try {
-    // Find where status is either 'pending' or 'Pending'
+    // Fetch orders that are in 'Pending' or 'Waiting' status (case-insensitive)
     const orders = await Order.find({ 
-      status: { $regex: /pending/i } 
+      status: { $regex: /pending|waiting/i } 
     }).sort({ createdAt: -1 });
     
-    console.log(`📡 GET /api/orders | Found: ${orders.length} orders`);
-    res.status(200).json(orders);
+    console.log(`📡 GET /api/orders/active | Found: ${orders.length} orders`);
+    
+    // Always return an array, even if empty, to prevent frontend crashes
+    res.status(200).json(orders || []);
   } catch (error) {
-    console.error("❌ Error fetching orders:", error.message);
-    res.status(500).json({ message: "Server Error", error: error.message });
+    console.error("❌ Error fetching active orders:", error.message);
+    res.status(500).json({ 
+      message: "Server Error", 
+      error: error.message,
+      orders: [] // Fallback empty array
+    });
   }
 });
 
-// @route   DELETE /api/orders/:id
-// @desc    Delete completed order
-router.delete('/:id', async (req, res) => {
+// @route   PUT /api/orders/complete/:id
+// @desc    Mark order as completed by kitchen
+router.put('/complete/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    console.log(`\n--- DELETE REQUEST ---`);
+    console.log(`\n--- COMPLETE REQUEST ---`);
     console.log(`ID received: [${id}]`);
-    console.log(`Connection State: ${mongoose.connection.readyState} (1=Connected)`);
 
     // Try finding by internal MongoDB ID first
-    let order = await Order.findById(id).catch(e => {
-      console.log(`Invalid ObjectId format: ${id}`);
-      return null;
-    });
+    let order = await Order.findById(id).catch(e => null);
     
     // Fallback: Try finding by custom orderId string if available
     if (!order) {
@@ -42,31 +44,24 @@ router.delete('/:id', async (req, res) => {
     }
 
     if (!order) {
-      // Diagnostic: List some IDs in the collection
-      const someOrders = await Order.find({}).limit(5);
-      const availableIds = someOrders.map(o => o._id.toString());
-      console.log(`⚠️ Order NOT FOUND. Available IDs in DB:`, availableIds);
-      
-      return res.status(404).json({ 
-        message: "Order not found in database",
-        receivedId: id,
-        availableCount: await Order.countDocuments()
-      });
+      return res.status(404).json({ message: "Order not found in database" });
     }
 
-    const deletedOrder = await Order.findByIdAndDelete(order._id);
-    console.log(`✅ Order ${deletedOrder._id} permanently removed from database.`);
+    order.status = 'Completed';
+    order.updatedAt = new Date();
+    await order.save();
+    console.log(`✅ Order ${order._id} marked as Completed.`);
     
     res.status(200).json({ 
       success: true, 
-      message: "Order successfully transmitted and removed",
+      message: "Order successfully updated to Completed",
       id: order._id 
     });
   } catch (error) {
     console.error(`❌ Operation failed:`, error);
     res.status(500).json({ 
       success: false, 
-      message: "An error occurred while processing the order",
+      message: "Error processing the order completion",
       error: error.message 
     });
   }

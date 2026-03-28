@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { fetchOrders, completeOrder } from '../api';
 import OrderCard from '../components/OrderCard';
-import { ChefHat, RefreshCcw, LayoutDashboard, Loader2, AlertCircle, ShoppingBag, Radio } from 'lucide-react';
+import { ChefHat, RefreshCcw, LayoutDashboard, Loader2, AlertCircle, ShoppingBag, Radio, Package } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
