@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Clock, User, CheckCircle, Package } from 'lucide-react';
+import { Clock, User, CheckCircle, Package, ShoppingBag, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
 const OrderCard = ({ order, onComplete }) => {
@@ -7,89 +7,134 @@ const OrderCard = ({ order, onComplete }) => {
 
   const handleComplete = async () => {
     setIsCompleting(true);
-    // Let animation play for 600ms
     setTimeout(async () => {
       await onComplete(order._id);
-    }, 600);
+    }, 700);
   };
 
-  const formattedTime = new Date(order.createdAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+  const formattedTime = new Date(order.createdAt).toLocaleTimeString([], { 
+    hour: '2-digit', 
+    minute: '2-digit',
+    hour12: true 
+  });
 
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className={`relative bg-gray-900 border-l-8 ${isCompleting ? 'border-green-500 completed-anim' : 'border-orange-500'} 
-        rounded-xl shadow-2xl overflow-hidden min-w-[320px] transition-all duration-300 hover:shadow-orange-500/10 hover:ring-1 hover:ring-orange-500/20`}
+      initial={{ opacity: 0, scale: 0.9 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95, filter: 'blur(10px)' }}
+      whileHover={{ y: -5 }}
+      transition={{ type: "spring", stiffness: 300, damping: 20 }}
+      className={`relative kds-card overflow-hidden group border-t border-[#E5E7EB] ${isCompleting ? 'completed-anim' : ''}`}
     >
-      <div className="p-6">
-        {/* Order Header */}
-        <div className="flex justify-between items-start mb-4">
-          <div>
-            <span className="text-xs font-bold uppercase tracking-wider text-orange-400 bg-orange-500/10 px-2.5 py-1 rounded">
-              ID: {order.orderId ? order.orderId : `#${order._id.slice(-6).toUpperCase()}`}
-            </span>
-            <div className="flex items-center mt-3 text-gray-100 font-bold text-xl uppercase tracking-tight">
-              <User className="w-5 h-5 mr-2 text-gray-400" />
-              {order.customerName || "Walk-in Guest"}
-            </div>
-          </div>
-          <div className="flex flex-col items-end">
-             <div className="flex items-center text-gray-400 text-sm font-medium">
-               <Clock className="w-4 h-4 mr-1" />
-               {formattedTime}
+      {/* Status Glow */}
+      <div className="absolute top-0 left-1/2 -translate-x-1/2 w-1/2 h-1 bg-gradient-to-r from-transparent via-[#22C55E]/20 to-transparent group-hover:via-[#22C55E]/40 transition-all duration-500"></div>
+
+      <div className="p-8">
+        {/* Header Section */}
+        <div className="flex justify-between items-start">
+          <div className="space-y-1">
+             <div className="flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse"></span>
+                <span className="text-[10px] font-black uppercase tracking-[0.3em] text-[#22C55E]/80">Terminal Order</span>
              </div>
-             <div className="mt-2 text-2xl font-black text-gray-100">
-                ₹{order.totalPrice || order.totalAmount || 0}
+             <h2 className="text-xl font-black text-[#111827] uppercase tracking-tighter">
+                {order.customerName || "GUEST STATION"}
+             </h2>
+             <p className="text-[10px] font-bold text-[#6B7280] tracking-widest uppercase">
+                ID: {order.orderId ? order.orderId : `#${order._id.slice(-6).toUpperCase()}`}
+             </p>
+          </div>
+          <div className="text-right">
+             <div className="flex items-center justify-end text-[#6B7280] text-xs font-bold gap-1.5 mb-2">
+                <Clock className="w-3 h-3 text-[#22C55E]/40" />
+                {formattedTime}
+             </div>
+             <div className="text-2xl font-black bg-clip-text text-transparent bg-gradient-to-br from-[#111827] to-[#6B7280] tabular-nums">
+                ₹{(order.totalPrice || order.totalAmount || 0).toLocaleString()}
              </div>
           </div>
         </div>
 
-        {/* Order Items */}
-        <div className="space-y-3 my-6 border-y border-gray-800 py-6">
+        {/* Item List */}
+        <div className="mt-8 space-y-4 border-t border-[#E5E7EB] pt-8 mb-10">
           {order.items.map((item, idx) => (
-            <div key={idx} className="flex justify-between items-center group">
-              <div className="flex items-center">
-                <div className="flex items-center justify-center bg-gray-800 text-orange-400 w-10 h-10 rounded-lg mr-3 group-hover:bg-orange-500/20 group-hover:text-orange-300 transition-colors duration-200">
-                  <span className="font-bold text-lg">{item.quantity}</span>
+            <div key={idx} className="flex gap-4 group/item">
+              <div className="relative shrink-0">
+                <div className="w-12 h-12 rounded-2xl bg-[#F1F5F9] flex items-center justify-center border border-[#E5E7EB] group-hover/item:border-[#22C55E]/30 transition-colors duration-300">
+                   <span className="text-lg font-black text-[#22C55E]">{item.quantity}</span>
                 </div>
-                <div className="text-lg font-semibold tracking-wide text-gray-200 group-hover:text-white transition-colors duration-200 uppercase">
-                  {item.name}
-                </div>
+                <div className="absolute -top-1 -right-1 w-3 h-3 bg-[#E5E7EB] border border-[#E5E7EB] rounded-full scale-0 group-hover/item:scale-100 transition-transform duration-300"></div>
               </div>
-              <div className="text-gray-500 font-medium tracking-tight">
-                x ₹{item.price}
+
+              <div className="flex-1 space-y-1.5 min-w-0">
+                <div className="flex justify-between items-baseline gap-2">
+                   <span className="text-sm font-black text-[#111827] uppercase tracking-wide truncate group-hover/item:text-black transition-colors">
+                     {item.name}
+                   </span>
+                   <span className="text-[10px] font-black text-[#6B7280] tabular-nums whitespace-nowrap">@ ₹{item.price}</span>
+                </div>
+                
+                {(item.preference || item.customDescription) && (
+                  <div className="space-y-2">
+                    {item.preference && (
+                      <div className="flex flex-wrap gap-1.5">
+                        {item.preference.split(',').map((p, i) => (
+                          <span key={i} className="text-[9px] font-black bg-[#F1F5F9] text-[#6B7280] px-2 py-0.5 rounded-full border border-[#E5E7EB] uppercase tracking-wider">
+                            {p.trim()}
+                          </span>
+                        ))}
+                      </div>
+                    )}
+                    {item.customDescription && (
+                      <div className="relative bg-[#F6F8FA] p-2.5 rounded-xl border-l-2 border-[#22C55E]/20 overflow-hidden">
+                        <div className="absolute top-0 right-0 p-1 opacity-5">
+                           <ShoppingBag className="w-8 h-8 rotate-12" />
+                        </div>
+                        <p className="text-[10px] font-medium italic text-[#6B7280] leading-relaxed relative z-10">
+                          <span className="text-[#22C55E]/70 not-italic mr-1 text-[8px] font-black uppercase">REQ:</span>
+                          "{item.customDescription}"
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
             </div>
           ))}
         </div>
 
-        {/* Footer Actions */}
-        <div className="mt-4">
-          <button
-            onClick={handleComplete}
-            disabled={isCompleting}
-            className={`w-full py-4 rounded-xl flex items-center justify-center font-black text-lg transition-all transform active:scale-95 shadow-lg group
-              ${isCompleting 
-                ? 'bg-green-600 cursor-not-allowed opacity-80' 
-                : 'bg-orange-500 hover:bg-orange-600 text-white shadow-orange-500/20 hover:shadow-orange-500/40'}`}
-          >
-            {isCompleting ? (
-              <>
-                <CheckCircle className="w-6 h-6 mr-3 animate-pulse" />
-                MARKING COMPLETED...
-              </>
-            ) : (
-              <>
-                <Package className="w-6 h-6 mr-3 group-hover:rotate-12 transition-transform duration-200" />
-                MARK AS COMPLETED
-              </>
-            )}
-          </button>
-        </div>
+        {/* Action Button */}
+        <button
+          onClick={handleComplete}
+          disabled={isCompleting}
+          className={`w-full group/btn relative overflow-hidden py-5 rounded-[1.5rem] flex items-center justify-center font-black text-xs uppercase tracking-[0.3em] transition-all duration-500 active:scale-95 shadow-lg
+            ${isCompleting 
+              ? 'bg-[#22C55E]/10 text-[#22C55E] cursor-not-allowed border border-[#22C55E]/10' 
+              : 'bg-[#22C55E] hover:bg-[#16A34A] text-white border border-[#22C55E]/20 shadow-[#22C55E]/20'}`}
+        >
+          {/* Hover Glow Effect */}
+          {!isCompleting && (
+            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full group-hover/btn:translate-x-full transition-transform duration-1000"></div>
+          )}
+          
+          {isCompleting ? (
+            <div className="flex items-center gap-3">
+              <Loader2 className="w-4 h-4 animate-spin text-[#22C55E]" />
+              <span>DISPATCHING...</span>
+            </div>
+          ) : (
+            <div className="flex items-center gap-3">
+              <Package className="w-5 h-5 text-white group-hover/btn:scale-110 group-hover/btn:rotate-12 transition-all duration-300" />
+              <span>READY TO TRANSMIT</span>
+            </div>
+          )}
+        </button>
       </div>
+
+      {/* Decorative Ornaments */}
+      <div className="absolute bottom-0 right-0 w-24 h-24 bg-[#22C55E]/5 rounded-full blur-3xl -z-10 group-hover:bg-[#22C55E]/10 transition-colors duration-500"></div>
     </motion.div>
   );
 };

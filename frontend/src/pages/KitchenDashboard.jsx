@@ -10,18 +10,22 @@ const KitchenDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [isRefreshing, setIsRefreshing] = useState(false);
+  const [lastSync, setLastSync] = useState(new Date());
 
   const getOrders = useCallback(async (showToast = false) => {
     try {
       setIsRefreshing(true);
       const response = await fetchOrders();
       setOrders(response.data);
+      setLastSync(new Date());
       setError(null);
-      if (showToast) toast.success('Orders refreshed!', { duration: 2000 });
+      if (showToast) toast.success('Kitchen Synced', { 
+        style: { background: '#022c22', color: '#10b981', borderRadius: '12px', border: '1px solid rgba(16,185,129,0.1)' }
+      });
     } catch (err) {
       console.error("Error loading orders:", err);
-      setError("Failed to fetch orders from kitchen server.");
-      toast.error('Failed to load orders.');
+      setError("Terminal Offline");
+      toast.error('Sync Failed');
     } finally {
       setLoading(false);
       setIsRefreshing(false);
@@ -32,16 +36,12 @@ const KitchenDashboard = () => {
     try {
       await completeOrder(id);
       setOrders(prev => prev.filter(o => o._id !== id));
-      toast.success('Order Completed!', {
-         icon: '🍳',
-         style: {
-           borderRadius: '10px',
-           background: '#333',
-           color: '#fff',
-         },
+      toast.success('Order Dispatched', {
+         icon: '🚀',
+         style: { borderRadius: '12px', background: '#0f172a', color: '#fff' },
       });
     } catch (err) {
-      toast.error('Failed to update order status');
+      toast.error('Dispatch Failed');
     }
   };
 
@@ -49,120 +49,119 @@ const KitchenDashboard = () => {
     getOrders();
     const interval = setInterval(() => {
       getOrders();
-    }, 5000); // Poll every 5 seconds
+    }, 5000);
 
     return () => clearInterval(interval);
-  }, [getOrders]);
-
-  return (
-    <div className="min-h-screen bg-gray-950 text-white selection:bg-orange-500 selection:text-white pb-10">
-      <Toaster position="top-right" />
+  }, [getOrders])  return (
+    <div className="min-h-screen bg-[#EEF2F6] font-inter text-[#111827]">
+      <Toaster position="bottom-right" />
       
-      {/* Navbar */}
-      <nav className="sticky top-0 z-50 bg-gray-950/80 backdrop-blur-xl border-b border-gray-900 px-6 py-5 flex items-center justify-between shadow-2xl">
+      {/* SaaS Header Bar */}
+      <nav className="sticky top-0 z-50 bg-white border-b border-[#E2E8F0] px-8 py-4 flex items-center justify-between nav-shadow">
+        {/* Left: Branding */}
         <div className="flex items-center space-x-4">
-          <div className="bg-gradient-to-br from-orange-400 to-orange-600 p-2.5 rounded-xl shadow-lg shadow-orange-500/20">
-            <ChefHat className="w-7 h-7 text-white" />
-          </div>
-          <div>
-            <h1 className="text-2xl font-black uppercase tracking-tight text-white flex items-center">
-              Kitchen <span className="text-orange-500 ml-2">Display</span>
-            </h1>
-            <div className="flex items-center text-xs font-bold text-gray-500 tracking-widest uppercase">
-              <span className="relative flex h-2 w-2 mr-2">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-orange-400 opacity-75"></span>
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-orange-500"></span>
-              </span>
-              Live Feed • Local Station
-            </div>
+          <div className="flex items-center gap-3">
+             <div className="bg-[#22C55E]/10 p-2 rounded-xl">
+               <ChefHat className="w-6 h-6 text-[#22C55E]" />
+             </div>
+             <div className="flex flex-col">
+               <h1 className="text-lg font-extrabold tracking-tight text-[#111827]">KITCHEN OPS</h1>
+               <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#22C55E] uppercase tracking-wider">
+                 <div className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse"></div>
+                 System Online
+               </div>
+             </div>
           </div>
         </div>
 
-        <div className="flex items-center space-x-6">
-          <div className="hidden md:flex flex-col items-end">
-            <span className="text-xs font-bold text-gray-500 uppercase tracking-widest">Active Orders</span>
-            <span className="text-xl font-black text-orange-500 leading-tight tracking-tighter">{orders.length} Units</span>
+        {/* Center: Station Identifier */}
+        <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center bg-[#F8FAFC] px-6 py-2 rounded-full border border-[#E2E8F0]">
+           <span className="text-xs font-black text-[#6B7280] uppercase tracking-[0.2em]">STATION: HOT LINE DELTA</span>
+        </div>
+
+        {/* Right: Operational Metrics */}
+        <div className="flex items-center space-x-10">
+          <div className="hidden lg:flex flex-col items-end border-r border-[#E2E8F0] pr-10">
+            <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest mb-0.5">Incoming Load</span>
+            <span className="text-xl font-black text-[#111827] tabular-nums leading-none">{orders.length < 10 ? `0${orders.length}` : orders.length} <span className="text-[10px]">TICKETS</span></span>
           </div>
-          <button 
-            onClick={() => getOrders(true)}
-            className="p-3 bg-gray-900 border border-gray-800 hover:border-orange-500/50 rounded-xl transition-all duration-300 hover:bg-gray-800 focus:ring-2 focus:ring-orange-500/50 active:scale-95 flex items-center group shadow-md"
-            title="Manual Sync"
-          >
-            <RefreshCcw className={`w-5 h-5 text-gray-400 group-hover:text-orange-400 ${isRefreshing ? 'animate-spin text-orange-400' : 'transition-transform duration-500 group-hover:rotate-180'}`} />
-          </button>
+          
+          <div className="flex items-center gap-6">
+            <div className="hidden sm:flex flex-col items-end text-right">
+              <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest mb-0.5">Last Sync</span>
+              <span className="text-xs font-bold text-[#111827]">{lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
+            </div>
+            <button 
+              onClick={() => getOrders(true)}
+              className="p-2.5 bg-[#F8FAFC] hover:bg-[#EEF2F6] border border-[#E2E8F0] rounded-xl transition-all duration-300 active:scale-95 group"
+              title="Manual Sync"
+            >
+              <RefreshCcw className={`w-5 h-5 text-[#6B7280] group-hover:text-[#22C55E] ${isRefreshing ? 'animate-spin' : 'transition-transform duration-700'}`} />
+            </button>
+          </div>
         </div>
       </nav>
 
-      {/* Main Content Area */}
-      <main className="max-w-[1920px] mx-auto p-4 md:p-8">
-        {loading ? (
-          <div className="flex flex-col items-center justify-center min-h-[60vh]">
-             <Loader2 className="w-16 h-16 text-orange-500 animate-spin mb-6 drop-shadow-lg" />
-             <div className="text-xl font-bold uppercase tracking-[0.2em] text-gray-500 animate-pulse">Initializing Terminal...</div>
-          </div>
-        ) : error ? (
-          <div className="flex flex-col items-center justify-center min-h-[60vh] text-center p-6 border-2 border-dashed border-red-500/20 rounded-3xl bg-red-500/5 backdrop-blur-sm max-w-2xl mx-auto">
-             <AlertCircle className="w-16 h-16 text-red-500 mb-6 drop-shadow-md" />
-             <h2 className="text-2xl font-black text-white mb-2 uppercase tracking-tight">{error}</h2>
-             <p className="text-gray-400 mb-8 max-w-md font-medium">Please check if the backend server is running and the database password is correctly set in environment variables.</p>
-             <button 
-               onClick={() => window.location.reload()}
-               className="bg-red-600 hover:bg-red-700 text-white px-8 py-4 rounded-xl font-black transition-all flex items-center shadow-lg shadow-red-900/20 active:scale-95"
-             >
-               <RefreshCcw className="w-5 h-5 mr-3" />
-               RETRY CONNECTION
-             </button>
-          </div>
-        ) : orders.length === 0 ? (
-          <AnimatePresence>
-            <motion.div 
-               initial={{ opacity: 0, scale: 0.9 }}
-               animate={{ opacity: 1, scale: 1 }}
-               className="flex flex-col items-center justify-center min-h-[70vh] text-center p-12 bg-gray-900/30 border-2 border-dashed border-gray-800/50 rounded-[2.5rem] backdrop-blur-md shadow-inner"
-            >
-              <div className="bg-gray-900 p-8 rounded-full mb-8 shadow-2xl relative">
-                  <ShoppingBag className="w-20 h-20 text-gray-700" />
-                  <div className="absolute -top-1 -right-1 bg-gray-800 p-2 rounded-full border-4 border-gray-950">
-                    <AlertCircle className="w-6 h-6 text-orange-500 animate-pulse" />
-                  </div>
+      {/* Surface Panel Grid */}
+      <main className="max-w-[1920px] mx-auto px-10 pt-10 pb-20">
+        <div className="surface-panel p-10 min-h-[calc(100vh-140px)]">
+          {loading ? (
+            <div className="flex flex-col items-center justify-center min-h-[40vh]">
+               <Loader2 className="w-12 h-12 text-[#22C55E] animate-spin mb-4" />
+               <div className="text-[10px] font-black uppercase tracking-[0.3em] text-[#6B7280]">Initializing Terminal...</div>
+            </div>
+          ) : error ? (
+            <div className="flex flex-col items-center justify-center min-h-[40vh] text-center p-12 bg-white rounded-[2rem] border border-red-100 max-w-lg mx-auto shadow-sm">
+               <AlertCircle className="w-12 h-12 text-red-500 mb-6" />
+               <h2 className="text-xl font-bold text-[#111827] mb-2">Network Interruption</h2>
+               <p className="text-sm text-[#6B7280] mb-8 leading-relaxed">System failed to establish connection with the primary order sync server. Operations may be impacted.</p>
+               <button 
+                 onClick={() => window.location.reload()}
+                 className="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-xl font-black text-xs transition-all flex items-center gap-2 active:scale-95 shadow-md shadow-red-500/10"
+               >
+                 <RefreshCcw className="w-4 h-4" /> RETRY SYNC
+               </button>
+            </div>
+          ) : orders.length === 0 ? (
+            <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-20 bg-[#F1F5F9]/30 rounded-[3rem] border-2 border-dashed border-[#E2E8F0]">
+              <div className="bg-white p-10 rounded-full mb-10 shadow-sm border border-[#E2E8F0]">
+                  <ShoppingBag className="w-16 h-16 text-[#E2E8F0]" />
               </div>
-              <h2 className="text-4xl font-black text-gray-400 mb-4 uppercase tracking-tighter">Kitchen Clear</h2>
-              <p className="text-gray-500 max-w-md text-lg font-medium leading-relaxed uppercase tracking-widest italic opacity-60">Ready for incoming transmissions... Waiting for guest orders.</p>
-              <div className="mt-10 flex gap-4">
-                 <div className="w-2 h-2 rounded-full bg-gray-800 animate-bounce delay-75"></div>
-                 <div className="w-2 h-2 rounded-full bg-gray-800 animate-bounce delay-150"></div>
-                 <div className="w-2 h-2 rounded-full bg-gray-800 animate-bounce delay-300"></div>
+              <h2 className="text-3xl font-black text-[#111827] mb-4 tracking-tight">Production Clear</h2>
+              <p className="text-[#6B7280] max-w-sm text-lg font-medium leading-relaxed opacity-60">Standing by for incoming customer transmissions. Monitoring all station channels.</p>
+              <div className="mt-12 flex space-x-3">
+                 {[...Array(3)].map((_, i) => (
+                   <div key={i} className="w-2 h-2 rounded-full bg-[#E2E8F0] animate-pulse" style={{ animationDelay: `${i * 200}ms` }}></div>
+                 ))}
               </div>
-            </motion.div>
-          </AnimatePresence>
-        ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-6 p-2">
-            <AnimatePresence mode="popLayout">
-              {orders.map((order) => (
-                <OrderCard 
-                  key={order._id}
-                  order={order}
-                  onComplete={handleCompleteOrder}
-                />
-              ))}
-            </AnimatePresence>
-          </div>
-        )}
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-10">
+              <AnimatePresence mode="popLayout">
+                {orders.map((order) => (
+                  <OrderCard 
+                    key={order._id}
+                    order={order}
+                    onComplete={handleCompleteOrder}
+                  />
+                ))}
+              </AnimatePresence>
+            </div>
+          )}
+        </div>
       </main>
 
-      {/* Info Bar */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-gray-950/80 backdrop-blur-lg border-t border-gray-900 px-6 py-2.5 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.3em] text-gray-600 z-50 select-none">
-          <div className="flex items-center space-x-6">
-             <div className="flex items-center"><LayoutDashboard className="w-3 h-3 mr-1.5 text-orange-500/50" /> Station Gamma-04</div>
-             <div className="hidden sm:block">Status: Optimal</div>
+      {/* Operational Footer */}
+      <footer className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-[#E2E8F0] px-10 py-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.3em] text-[#6B7280] z-50">
+          <div className="flex items-center space-x-12">
+             <div className="flex items-center gap-2 text-[#22C55E]/80"><LayoutDashboard className="w-4 h-4" /> LIVE DISPATCH MONITOR</div>
+             <div className="flex items-center gap-2 opacity-50"><div className="w-1.5 h-1.5 rounded-full bg-[#6B7280]"></div> LATENCY: 14MS</div>
           </div>
-          <div className="flex items-center space-x-6">
-             <div className="text-orange-500/80">Polling Rate: 5 SEC</div>
-             <div className="text-gray-700">© 2026 MenuMagic Enterprise</div>
-          </div>
+          <div className="text-[#111827]/40 tracking-[0.5em]">© KITCHEN OPS ENTERPRISE v2.4.0</div>
       </footer>
     </div>
   );
+};
 };
 
 export default KitchenDashboard;
