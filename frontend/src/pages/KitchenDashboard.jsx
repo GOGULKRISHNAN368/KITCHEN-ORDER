@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { fetchOrders, completeOrder } from '../api';
 import OrderCard from '../components/OrderCard';
-import { ChefHat, RefreshCcw, LayoutDashboard, Loader2, AlertCircle, ShoppingBag } from 'lucide-react';
+import { ChefHat, RefreshCcw, LayoutDashboard, Loader2, AlertCircle, ShoppingBag, Radio } from 'lucide-react';
 import toast, { Toaster } from 'react-hot-toast';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -19,29 +19,39 @@ const KitchenDashboard = () => {
       setOrders(response.data);
       setLastSync(new Date());
       setError(null);
-      if (showToast) toast.success('Kitchen Synced', { 
-        style: { background: '#022c22', color: '#10b981', borderRadius: '12px', border: '1px solid rgba(16,185,129,0.1)' }
-      });
+      if (showToast) {
+        toast.success('System Synced', {
+          style: { background: '#111827', color: '#fff', borderRadius: '14px', fontSize: '12px', fontWeight: 'bold' }
+        });
+      }
     } catch (err) {
       console.error("Error loading orders:", err);
-      setError("Terminal Offline");
-      toast.error('Sync Failed');
+      setError("Sync Interrupted");
     } finally {
       setLoading(false);
       setIsRefreshing(false);
     }
   }, []);
 
-  const handleCompleteOrder = async (id) => {
+  const handleCompleteOrder = async (orderId) => {
+    if (!orderId) return;
+    
     try {
-      await completeOrder(id);
-      setOrders(prev => prev.filter(o => o._id !== id));
-      toast.success('Order Dispatched', {
-         icon: '🚀',
-         style: { borderRadius: '12px', background: '#0f172a', color: '#fff' },
+      // Optimistically remove from UI first for instant feedback
+      setOrders(prev => prev.filter(o => o._id !== orderId));
+      
+      // API call to delete from database
+      await completeOrder(orderId);
+      
+      toast.success('System Transmitted', {
+        icon: '✅',
+        style: { borderRadius: '14px', background: '#111827', color: '#fff', fontSize: '12px', fontWeight: 'bold' },
       });
     } catch (err) {
-      toast.error('Dispatch Failed');
+      console.error("Order completion failed:", err);
+      // If it fails, the next poll (every 5s) will bring the order back if it still exists in DB
+      const errorMsg = err.response?.data?.message || 'Transmission Sync Error';
+      toast.error(errorMsg);
     }
   };
 
@@ -50,116 +60,106 @@ const KitchenDashboard = () => {
     const interval = setInterval(() => {
       getOrders();
     }, 5000);
-
     return () => clearInterval(interval);
   }, [getOrders]);
 
   return (
-    <div className="min-h-screen bg-[#EEF2F6] font-inter text-[#111827]">
-      <Toaster position="bottom-right" />
+    <div className="min-h-screen bg-[#EEF2F6] font-inter text-[#111827] w-full">
+      <Toaster position="top-center" />
       
       {/* SaaS Header Bar */}
-      <nav className="sticky top-0 z-50 bg-white border-b border-[#E2E8F0] px-8 py-4 flex items-center justify-between nav-shadow">
-        {/* Left: Branding */}
-        <div className="flex items-center space-x-4">
-          <div className="flex items-center gap-3">
-             <div className="bg-[#22C55E]/10 p-2 rounded-xl">
-               <ChefHat className="w-6 h-6 text-[#22C55E]" />
+      <nav className="sticky top-0 z-50 bg-white border-b border-[#E2E8F0] px-10 py-5 flex items-center justify-between nav-shadow">
+        {/* Left: Branding & Status */}
+        <div className="flex items-center gap-5">
+           <div className="bg-[#22C55E] p-2.5 rounded-2xl shadow-lg shadow-[#22C55E]/20">
+             <ChefHat className="w-6 h-6 text-white" />
+           </div>
+           <div>
+             <h1 className="text-xl font-black tracking-tighter text-[#111827] leading-none mb-1.5">KITCHEN OPS</h1>
+             <div className="flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-[#22C55E] animate-pulse"></div>
+                <span className="text-[10px] font-black text-[#22C55E] uppercase tracking-widest">System Online</span>
              </div>
-             <div className="flex flex-col">
-               <h1 className="text-lg font-extrabold tracking-tight text-[#111827]">KITCHEN OPS</h1>
-               <div className="flex items-center gap-1.5 text-[10px] font-bold text-[#22C55E] uppercase tracking-wider">
-                 <div className="w-1.5 h-1.5 rounded-full bg-[#22C55E] animate-pulse"></div>
-                 System Online
-               </div>
-             </div>
-          </div>
+           </div>
         </div>
 
-        {/* Center: Station Identifier */}
-        <div className="hidden md:flex absolute left-1/2 -translate-x-1/2 items-center bg-[#F8FAFC] px-6 py-2 rounded-full border border-[#E2E8F0]">
-           <span className="text-xs font-black text-[#6B7280] uppercase tracking-[0.2em]">STATION: HOT LINE DELTA</span>
+        {/* Center: Station Name */}
+        <div className="hidden lg:flex items-center gap-3 bg-[#F8FAFC] border border-[#E2E8F0] px-8 py-3 rounded-full">
+           <Radio className="w-4 h-4 text-[#6B7280]" />
+           <span className="text-[11px] font-black text-[#6B7280] uppercase tracking-[0.3em]">Station: Alpha Main Line</span>
         </div>
 
         {/* Right: Operational Metrics */}
-        <div className="flex items-center space-x-10">
-          <div className="hidden lg:flex flex-col items-end border-r border-[#E2E8F0] pr-10">
-            <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest mb-0.5">Incoming Load</span>
-            <span className="text-xl font-black text-[#111827] tabular-nums leading-none">{orders.length < 10 ? `0${orders.length}` : orders.length} <span className="text-[10px]">TICKETS</span></span>
-          </div>
-          
-          <div className="flex items-center gap-6">
-            <div className="hidden sm:flex flex-col items-end text-right">
-              <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest mb-0.5">Last Sync</span>
-              <span className="text-xs font-bold text-[#111827]">{lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false })}</span>
-            </div>
-            <button 
-              onClick={() => getOrders(true)}
-              className="p-2.5 bg-[#F8FAFC] hover:bg-[#EEF2F6] border border-[#E2E8F0] rounded-xl transition-all duration-300 active:scale-95 group"
-              title="Manual Sync"
-            >
-              <RefreshCcw className={`w-5 h-5 text-[#6B7280] group-hover:text-[#22C55E] ${isRefreshing ? 'animate-spin' : 'transition-transform duration-700'}`} />
-            </button>
-          </div>
+        <div className="flex items-center gap-10">
+           <div className="hidden sm:flex flex-col items-end">
+             <span className="text-[10px] font-bold text-[#6B7280] uppercase tracking-widest mb-1.5 opacity-50">Pending Load</span>
+             <span className="text-2xl font-black text-[#111827] tracking-tighter">{orders.length < 10 ? `0${orders.length}` : orders.length} <span className="text-[10px] opacity-30">TICKETS</span></span>
+           </div>
+
+           <div className="flex items-center gap-4 border-l border-[#E2E8F0] pl-10">
+              <div className="text-right">
+                <p className="text-[10px] font-black text-[#6B7280] uppercase tracking-widest opacity-40">Sync Time</p>
+                <p className="text-xs font-black text-[#111827]">{lastSync.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', hour12: false })}</p>
+              </div>
+              <button 
+                onClick={() => getOrders(true)}
+                className="p-3 bg-white hover:bg-[#F8FAFC] border border-[#E2E8F0] rounded-2xl transition-all active:scale-90 group"
+              >
+                <RefreshCcw className={`w-5 h-5 text-[#6B7280] group-hover:text-[#22C55E] ${isRefreshing ? 'animate-spin' : ''}`} />
+              </button>
+           </div>
         </div>
       </nav>
 
       {/* Surface Panel Grid */}
-      <main className="max-w-[1920px] mx-auto px-10 pt-10 pb-20">
-        <div className="surface-panel p-10 min-h-[calc(100vh-140px)]">
+      <main className="max-w-[1800px] mx-auto pt-10 px-10 pb-20">
+        <div className="surface-panel min-h-[calc(100vh-160px)] p-12">
           {loading ? (
             <div className="flex flex-col items-center justify-center min-h-[40vh]">
-               <Loader2 className="w-12 h-12 text-[#22C55E] animate-spin mb-4" />
-               <div className="text-[10px] font-black uppercase tracking-[0.3em] text-[#6B7280]">Initializing Terminal...</div>
+               <Loader2 className="w-12 h-12 text-[#22C55E] animate-spin mb-6" />
+               <p className="text-[10px] font-black uppercase tracking-[0.5em] text-[#6B7280]">Initializing Data Streams...</p>
             </div>
           ) : error ? (
-            <div className="flex flex-col items-center justify-center min-h-[40vh] text-center p-12 bg-white rounded-[2rem] border border-red-100 max-w-lg mx-auto shadow-sm">
-               <AlertCircle className="w-12 h-12 text-red-500 mb-6" />
-               <h2 className="text-xl font-bold text-[#111827] mb-2">Network Interruption</h2>
-               <p className="text-sm text-[#6B7280] mb-8 leading-relaxed">System failed to establish connection with the primary order sync server. Operations may be impacted.</p>
-               <button 
-                 onClick={() => window.location.reload()}
-                 className="bg-red-500 hover:bg-red-600 text-white px-8 py-3 rounded-xl font-black text-xs transition-all flex items-center gap-2 active:scale-95 shadow-md shadow-red-500/10"
-               >
-                 <RefreshCcw className="w-4 h-4" /> RETRY SYNC
-               </button>
-            </div>
-          ) : orders.length === 0 ? (
-            <div className="flex flex-col items-center justify-center min-h-[50vh] text-center p-20 bg-[#F1F5F9]/30 rounded-[3rem] border-2 border-dashed border-[#E2E8F0]">
-              <div className="bg-white p-10 rounded-full mb-10 shadow-sm border border-[#E2E8F0]">
-                  <ShoppingBag className="w-16 h-16 text-[#E2E8F0]" />
-              </div>
-              <h2 className="text-3xl font-black text-[#111827] mb-4 tracking-tight">Production Clear</h2>
-              <p className="text-[#6B7280] max-w-sm text-lg font-medium leading-relaxed opacity-60">Standing by for incoming customer transmissions. Monitoring all station channels.</p>
-              <div className="mt-12 flex space-x-3">
-                 {[...Array(3)].map((_, i) => (
-                   <div key={i} className="w-2 h-2 rounded-full bg-[#E2E8F0] animate-pulse" style={{ animationDelay: `${i * 200}ms` }}></div>
-                 ))}
-              </div>
+            <div className="flex flex-col items-center justify-center min-h-[40vh] text-center">
+               <AlertCircle className="w-16 h-16 text-red-400 mb-6" />
+               <h2 className="text-2xl font-black mb-2 uppercase tracking-tight">Sync Offline</h2>
+               <p className="text-sm text-[#6B7280] max-w-xs mb-10 font-medium leading-relaxed">Failed to establish connection with the primary data relay station.</p>
+               <button onClick={() => window.location.reload()} className="ready-button px-10 py-4 rounded-full text-white font-black text-xs uppercase tracking-widest">Retry Connection</button>
             </div>
           ) : (
-            <div className="grid grid-cols-1 md:grid-cols-2 2xl:grid-cols-3 gap-10">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-10">
               <AnimatePresence mode="popLayout">
-                {orders.map((order) => (
-                  <OrderCard 
-                    key={order._id}
-                    order={order}
-                    onComplete={handleCompleteOrder}
-                  />
-                ))}
+                {orders.length === 0 ? (
+                  <div className="col-span-full py-20 flex flex-col items-center justify-center space-y-4">
+                    <Package className="w-16 h-16 text-[#E2E8F0] stroke-[1]" />
+                    <p className="text-xl font-bold text-[#6B7280]">All orders transmitted.</p>
+                    <p className="text-sm text-[#94A3B8]">Waiting for incoming traffic...</p>
+                  </div>
+                ) : (
+                  orders.map((order) => {
+                    const uniqueKey = order._id || order.id || order.orderId || Math.random();
+                    return (
+                      <OrderCard 
+                        key={uniqueKey} 
+                        order={order} 
+                        onComplete={handleCompleteOrder} 
+                      />
+                    );
+                  })
+                )}
               </AnimatePresence>
             </div>
           )}
         </div>
       </main>
 
-      {/* Operational Footer */}
-      <footer className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-md border-t border-[#E2E8F0] px-10 py-3 flex items-center justify-between text-[10px] font-bold uppercase tracking-[0.3em] text-[#6B7280] z-50">
-          <div className="flex items-center space-x-12">
-             <div className="flex items-center gap-2 text-[#22C55E]/80"><LayoutDashboard className="w-4 h-4" /> LIVE DISPATCH MONITOR</div>
-             <div className="flex items-center gap-2 opacity-50"><div className="w-1.5 h-1.5 rounded-full bg-[#6B7280]"></div> LATENCY: 14MS</div>
+      {/* Footer / Status */}
+      <footer className="fixed bottom-0 left-0 right-0 bg-white/80 backdrop-blur-xl border-t border-[#E2E8F0] px-10 py-4 flex items-center justify-between text-[11px] font-black uppercase tracking-[0.3em] text-[#6B7280] z-50">
+          <div className="flex items-center gap-10">
+             <div className="flex items-center gap-2.5 text-[#22C55E]"><LayoutDashboard className="w-4 h-4" /> Operations Live</div>
+             <div className="opacity-30">Channel: Delta-7</div>
           </div>
-          <div className="text-[#111827]/40 tracking-[0.5em]">© KITCHEN OPS ENTERPRISE v2.4.0</div>
+          <div className="opacity-20">Kitchen OPS Enterprise v2.5</div>
       </footer>
     </div>
   );
