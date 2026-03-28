@@ -94,5 +94,3 @@ KITCHEN-ORDER/
 **GOGUL KRISHNAN**
 GitHub: [@GOGULKRISHNAN368](https://github.com/GOGULKRISHNAN368)
 
----
-*Created with ❤️ for Kitchen Efficiency.*
