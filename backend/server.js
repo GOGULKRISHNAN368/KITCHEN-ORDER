@@ -27,7 +27,7 @@ const MONGO_URI = process.env.MONGO_URI;
 mongoose.connect(MONGO_URI)
   .then(() => {
     console.log("✅ MongoDB Connected: cluster0.gzmuwmk.mongodb.net/menumagic");
-    const PORT = process.env.PORT || 5005;
+    const PORT = process.env.PORT || 5000;
     app.listen(PORT, () => {
       console.log(`🚀 Kitchen backend running on http://localhost:${PORT}`);
     });
