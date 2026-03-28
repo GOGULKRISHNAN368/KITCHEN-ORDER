@@ -1,25 +1,17 @@
 import React, { useState } from 'react';
-import { Clock, CheckCircle, Package, Loader2, Info } from 'lucide-react';
+import { Clock, CheckCircle, MoreHorizontal, Info, BadgeCheck } from 'lucide-react';
 import { motion } from 'framer-motion';
 
 const OrderCard = ({ order, onComplete }) => {
-  const [isCompleting, setIsCompleting] = useState(false);
+  const [isProcessing, setIsProcessing] = useState(false);
 
   const handleComplete = async () => {
+    setIsProcessing(true);
     try {
-      setIsCompleting(true);
-      // Wait for the exit animation duration before calling the removal logic
-      setTimeout(async () => {
-        try {
-          await onComplete(order._id);
-        } catch (err) {
-          setIsCompleting(false);
-          console.error("Error in onComplete:", err);
-        }
-      }, 600);
+      await onComplete(order.orderId);
     } catch (err) {
-      setIsCompleting(false);
-      console.error("handleComplete failed:", err);
+      setIsProcessing(false);
+      console.error("Order completion failed:", err);
     }
   };
 
@@ -29,103 +21,101 @@ const OrderCard = ({ order, onComplete }) => {
     hour12: true 
   });
 
+  const getStatusBadge = (status) => {
+    const s = status?.toLowerCase() || 'pending';
+    if (s === 'preparing') return 'badge-preparing';
+    return 'badge-pending';
+  };
+
   return (
     <motion.div
       layout
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      exit={{ opacity: 0, scale: 0.95 }}
-      className={`kds-card group ${isCompleting ? 'completed-anim' : ''}`}
+      initial={{ opacity: 0, scale: 0.98 }}
+      animate={{ opacity: 1, scale: 1 }}
+      exit={{ opacity: 0, scale: 0.95, filter: 'blur(8px)' }}
+      className="order-card p-4 flex flex-col gap-4"
     >
-      <div className="p-8">
-        {/* Terminal Header */}
-        <div className="flex justify-between items-start mb-6">
-          <div className="space-y-1">
-            <div className="flex items-center gap-2 mb-1">
-              <span className="w-2.5 h-2.5 rounded-full bg-[#22C55E] shadow-[0_0_8px_rgba(34,197,94,0.5)]"></span>
-              <span className="text-[10px] font-black uppercase tracking-[0.25em] text-[#22C55E]">Terminal Order</span>
-            </div>
-            <h2 className="text-2xl font-black text-[#111827] tracking-tight truncate max-w-[200px]">
-              {order.customerName || "GUEST STATION"}
-            </h2>
-            <p className="text-[10px] font-bold text-[#6B7280] tracking-widest uppercase opacity-60">
-              ID: {order.orderId || (order._id ? `#${order._id.toString().slice(-6).toUpperCase()}` : "N/A")}
-            </p>
+      {/* Ticket Header */}
+      <div className="flex justify-between items-start">
+        <div className="flex flex-col gap-1">
+          <div className="flex items-center gap-2">
+            <span className={`w-1.5 h-1.5 rounded-full ${order.status?.toLowerCase() === 'preparing' ? 'bg-blue-500' : 'bg-amber-500'}`}></span>
+            <span className="text-[11px] font-bold text-gray-500 uppercase tracking-widest">
+              {order.orderId || "GUEST"}
+            </span>
           </div>
-          <div className="text-right">
-            <div className="flex items-center justify-end text-[#6B7280] text-[10px] font-black gap-1.5 mb-2 uppercase tracking-widest">
-              <Clock className="w-3.5 h-3.5 text-[#22C55E]/60" />
-              {formattedTime}
-            </div>
-            <div className="text-2xl font-black text-[#111827] tabular-nums">
-              ₹{(order.totalPrice || order.totalAmount || 0).toLocaleString()}
-            </div>
+          <h3 className="text-sm font-black text-gray-900 leading-none">
+            {order.customerName || "Terminal Order"}
+          </h3>
+        </div>
+        <div className="text-right flex flex-col items-end gap-1">
+          <div className="flex items-center gap-1.5 text-[10px] font-bold text-gray-400">
+            <Clock className="w-3 h-3 text-gray-300" />
+            {formattedTime}
+          </div>
+          <div className="text-xs font-black text-gray-800">
+            ₹{(order.totalAmount || 0).toLocaleString()}
           </div>
         </div>
+      </div>
 
-        <div className="h-px bg-[#E2E8F0] w-full mb-8"></div>
+      <div className="h-px bg-gray-50 -mx-4"></div>
 
-        {/* Food Items List */}
-        <div className="space-y-6 mb-10">
-          {order.items.map((item, idx) => (
-            <div key={idx} className="flex gap-4">
-              <div className="qty-badge shrink-0">
-                {item.quantity}
-              </div>
+      {/* Items Section */}
+      <div className="space-y-4 py-1">
+        {order.items?.map((item, idx) => (
+          <div key={idx} className="flex gap-3 items-start">
+            <div className="w-6 h-6 shrink-0 bg-gray-50 border border-gray-100 rounded flex items-center justify-center text-[11px] font-black text-gray-600">
+              {item.quantity}
+            </div>
+            <div className="flex flex-col gap-1.5">
+              <span className="text-[13px] font-extrabold text-gray-700 leading-tight uppercase tracking-tight">
+                {item.name}
+              </span>
               
-              <div className="flex-1 min-w-0">
-                <div className="flex justify-between items-start mb-1.5">
-                  <h3 className="text-base font-extrabold text-[#111827] uppercase tracking-wide leading-tight">
-                    {item.name}
-                  </h3>
+              {/* Pill Badges for Preferences */}
+              {item.preference && (
+                <div className="flex flex-wrap gap-1">
+                  {item.preference.split(',').map((p, i) => (
+                    <span key={i} className="text-[9px] font-bold bg-gray-100 text-gray-500 px-1.5 py-0.5 rounded uppercase tracking-wider">
+                      {p.trim()}
+                    </span>
+                  ))}
                 </div>
-                
-                {/* Modifiers & Chips */}
-                {item.preference && (
-                  <div className="flex flex-wrap gap-1.5 mb-2">
-                    {item.preference.split(',').map((p, i) => (
-                      <span key={i} className="text-[9px] font-extrabold bg-[#F1F5F9] text-[#6B7280] px-2.5 py-1 rounded-md border border-[#E2E8F0] uppercase tracking-wider">
-                        {p.trim()}
-                      </span>
-                    ))}
-                  </div>
-                )}
+              )}
 
-                {/* Special Request Box */}
-                {item.customDescription && (
-                  <div className="bg-[#22C55E]/5 p-3 rounded-xl border border-[#22C55E]/10 flex gap-2.5 items-start">
-                    <Info className="w-3.5 h-3.5 text-[#22C55E] mt-0.5 shrink-0" />
-                    <p className="text-[11px] font-bold text-[#22C55E]/80 leading-relaxed italic">
-                      {item.customDescription}
-                    </p>
-                  </div>
-                )}
-              </div>
+              {/* Special Instructions Bubble */}
+              {item.customDescription && (
+                <div className="bg-emerald-50/50 p-2 rounded-md border border-emerald-100/50 flex gap-2 items-start">
+                  <Info className="w-3 h-3 text-emerald-500 mt-0.5 shrink-0" />
+                  <p className="text-[10px] font-bold text-emerald-700/80 leading-normal italic">
+                    {item.customDescription}
+                  </p>
+                </div>
+              )}
             </div>
-          ))}
-        </div>
+          </div>
+        ))}
+      </div>
 
-        {/* Global Dispatch Button */}
+      {/* Actions */}
+      <div className="mt-auto flex gap-2 pt-2">
         <button
           onClick={handleComplete}
-          disabled={isCompleting}
-          className={`ready-button w-full py-5 rounded-full flex items-center justify-center gap-3 text-white font-black text-xs uppercase tracking-[0.4em] relative overflow-hidden ${isCompleting ? 'opacity-50 cursor-not-allowed' : ''}`}
+          disabled={isProcessing}
+          className="flex-1 ready-button h-10 rounded-lg flex items-center justify-center gap-2 text-white font-black text-[10px] uppercase tracking-widest disabled:opacity-50"
         >
-          {isCompleting ? (
-            <>
-              <Loader2 className="w-4 h-4 animate-spin" />
-              <span>TRANSMITTING...</span>
-            </>
+          {isProcessing ? (
+            <motion.div animate={{ rotate: 360 }} transition={{ repeat: Infinity, duration: 1 }} className="w-4 h-4 border-2 border-white/30 border-t-white rounded-full" />
           ) : (
             <>
-              <CheckCircle className="w-5 h-5" />
-              <span>READY TO TRANSMIT</span>
+              <CheckCircle className="w-3.5 h-3.5" />
+              READY TO TRANSMIT
             </>
           )}
-          {/* Animated Shine */}
-          {!isCompleting && (
-            <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent -translate-x-full hover:animate-[shimmer_2s_infinite]"></div>
-          )}
+        </button>
+        <button className="w-10 h-10 border border-gray-100 rounded-lg flex items-center justify-center text-gray-400 hover:bg-gray-50 transition-colors">
+          <MoreHorizontal className="w-4 h-4" />
         </button>
       </div>
     </motion.div>
@@ -133,4 +123,3 @@ const OrderCard = ({ order, onComplete }) => {
 };
 
 export default OrderCard;
-

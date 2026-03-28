@@ -1,14 +1,16 @@
 import axios from 'axios';
 
-// The backend is running on 5000, Vite proxies /api to it.
-const API_URL = '/api/orders';
+const API_URL = 'http://localhost:5000/api/orders';
 
 export const fetchOrders = () => {
-  console.log('📡 Fetching active orders...');
-  return axios.get(`${API_URL}/active`);
+  console.log('📡 Fetching pending orders from central relay...');
+  // We want to fetch all orders, and filter for 'Pending' on the frontend 
+  // OR update the backend to have a specialized /pending route.
+  // For now, let's just fetch all and filter for 'Pending' in the component.
+  return axios.get(`${API_URL}`);
 };
 
-export const completeOrder = (id) => {
-  console.log(`✅ Completing order: ${id} at ${API_URL}/complete/${id}`);
-  return axios.put(`${API_URL}/complete/${id}`);
+export const completeOrder = (orderId) => {
+  console.log(`✅ Completing order: ${orderId}`);
+  return axios.put(`${API_URL}/complete/${orderId}`);
 };
