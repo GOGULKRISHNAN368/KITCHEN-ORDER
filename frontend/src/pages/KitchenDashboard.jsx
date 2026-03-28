@@ -52,7 +52,9 @@ const KitchenDashboard = () => {
     }, 5000);
 
     return () => clearInterval(interval);
-  }, [getOrders])  return (
+  }, [getOrders]);
+
+  return (
     <div className="min-h-screen bg-[#EEF2F6] font-inter text-[#111827]">
       <Toaster position="bottom-right" />
       
@@ -161,7 +163,6 @@ const KitchenDashboard = () => {
       </footer>
     </div>
   );
-};
 };
 
 export default KitchenDashboard;
